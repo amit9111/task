@@ -13,7 +13,7 @@ const pool = new StaticPool({
     task: filePath //// Worker Task
   })
 
-async function WorkerMision(arrayTofiil)
+async function WorkerMission(arrayTofiil)
 {
   const jsonArray=await csv().fromFile(csvFilePath);/// Convert CSV FILE => TO JSON 
  var SoftObject=groupBy(jsonArray, 'vehicle_id')/// Group by vehicle_id
@@ -45,7 +45,7 @@ var groupBy = function(xs, key) {//Sorting array by key
 
 app.get('/',async (req,res)=>{
         var FillObject=[];
-        var obj=await WorkerMision(FillObject)
+        var obj=await WorkerMission(FillObject)
         FillObject=FillObject.sort((a, b) => parseInt(a.row_id) - parseInt(b.row_id)); ///Sort The array By  row_id => ASC
 
       converter.json2csv(FillObject, (err, csv) => {

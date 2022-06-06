@@ -21,7 +21,7 @@ function Getresult(obj,Tid){
 parentPort.on('message', (param) => {
 
   const result = Getresult(param,threadId);
-  console.log(`Using Thread Id : ${threadId}`)
+  console.log(`Using worker id : ${threadId}`)
   parentPort.postMessage(result);
   
 
