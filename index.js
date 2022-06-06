@@ -1,80 +1,62 @@
-
-
 const express = require('express')
-require('dotenv').config()
+require('dotenv').config()///Program settings
 const { StaticPool } = require('node-worker-threads-pool')
+const fs = require('fs');
 const port = process.env.Port
 const app = express()
 const filePath = './worker.js'
+const csv=require('csvtojson')
+const converter = require('json-2-csv');
+const csvFilePath=process.env.FilePath
 const pool = new StaticPool({
-    size: parseInt(process.env.PoolSize),
-    task: filePath
+    size: parseInt(process.env.PoolSize),///Number of pool Workers
+    task: filePath //// Worker Task
   })
 
-
-async function WorkerMision(SoftObject)
+async function WorkerMision(arrayTofiil)
 {
-   
-    return new Promise(async (resolve,reject)=>{
-        
-        try{
-           let obj=[]
-            for (const property in SoftObject) {
-               
-                let res= await pool.exec(SoftObject[property]);
-                obj.push(...res)
-            }
-        resolve(obj)
-        }
-        catch(error){
-            resolve(false)
+  const jsonArray=await csv().fromFile(csvFilePath);/// Convert CSV FILE => TO JSON 
+ var SoftObject=groupBy(jsonArray, 'vehicle_id')/// Group by vehicle_id
 
-        }
-    })
+  return await new Promise(async (resolve, rejects) => {
+    const PromiseArray = [];
+    /// Run on the grouped array by vehicle_id => send evrytime one object to the worker
+    for (const property in SoftObject) {
+
+      const PromiseVal = new Promise(async (resolve, reject) => {
+          pool.exec(SoftObject[property]).then((data) => {
+            arrayTofiil.push(...data);
+            resolve();
+          }).catch((error) => reject(error));
+      });
+      PromiseArray.push(PromiseVal);
+    }
+
+    resolve(await Promise.all(PromiseArray));
+  });
 }
 
-
-
-
+var groupBy = function(xs, key) {//Sorting array by key
+  return xs.reduce(function(rv, x) {
+    (rv[x[key]] = rv[x[key]] || []).push(x);
+    return rv;
+  }, {});
+};
 
 app.get('/',async (req,res)=>{
-    let obj=CsvObject()///Convert CsV File ==> to array
-    let SoftObject=CreactObjectSoftArray(obj);
-    let ans=await WorkerMision(SoftObject)
-    res.send(ans)
+        var FillObject=[];
+        var obj=await WorkerMision(FillObject)
+        FillObject=FillObject.sort((a, b) => parseInt(a.row_id) - parseInt(b.row_id)); ///Sort The array By  row_id => ASC
 
-});
-
-
-function CsvObject(){
-    var fs = require('fs');
-    var data = fs.readFileSync('file.csv')
-    .toString() // convert Buffer to string
-    .split('\n') // split string to lines
-    .map(e => e.trim()) // remove white spaces for each line
-    .map(e => e.split(',').map(e => e.trim())); // split each line to array
-return (data); 
-}
-
-function CreactObjectSoftArray(obj){
-
-    let objarray=[]; ///{}
-    for(let i=1; i<obj.length;i++){
-        if( objarray[obj[i][1]] === undefined ) {
-            objarray[obj[i][1]]=[]
-        }
-        objarray[obj[i][1]].push({
-            [obj[0][0]]:obj[i][0],
-            [obj[0][1]]:obj[i][1],
-            [obj[0][2]]:obj[i][2],
-            [obj[0][3]]:obj[i][3],
-
-        })
-    } 
-
-    return objarray;
-}
-
-
-
+      converter.json2csv(FillObject, (err, csv) => {
+          if (err) {
+              throw err;
+          }
+          // write CSV to a file
+          fs.writeFileSync(process.env.CompleteTaskPath, csv);
+          
+      });
+         res.send("Done!")   
+  });
+  
 app.listen(port, () => {})
